@@ -1,0 +1,1 @@
+This text file has the purpose of being the input to a C++ function that will display the frequency for each character contained within this file.
