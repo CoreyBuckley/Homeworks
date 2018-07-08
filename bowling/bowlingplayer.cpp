@@ -7,6 +7,7 @@ int bowlingplayer::NUMBER_OF_FRAMES = 10;
 int bowlingplayer::NAME_COLUMN_WIDTH;
 //int bowlingplayer::SCORECARD_WIDTH = getScorecardWidth();
 
+#pragma region Constructors
 //default will be all zero scores
 bowlingplayer::bowlingplayer() : firstName("Robby"), lastName("Nobody"), throwScores(vector<int>(10, 0)) {
 	populateFrameScores();
@@ -15,8 +16,11 @@ bowlingplayer::bowlingplayer() : firstName("Robby"), lastName("Nobody"), throwSc
 bowlingplayer::bowlingplayer(string first, string last, const vector<int>& scores) : firstName(first), lastName(last), throwScores(scores) {
 	populateFrameScores();
 }
+#pragma endregion
 
-int bowlingplayer::getTotalScore() const
+#pragma region Accessors
+
+const int& bowlingplayer::getTotalScore() const
 {
 	return totalScore;
 }
@@ -46,20 +50,37 @@ const std::string & bowlingplayer::getFirstName() const
 	return firstName;
 }
 
-const std::string bowlingplayer::toString()
+const int& bowlingplayer::getScorecardWidth()
 {
-	string singleLineOutput = getName() + " ";
-	char score[3];
-	for (int i = 0; i < frameScores.size(); i++) {
-		_itoa_s(frameScores[i], score, 10); //have to convert from int to char
-		singleLineOutput += score;
-		if (i != frameScores.size() - 1) {
-			singleLineOutput += " ";
-		}
-	}
-	return singleLineOutput;
+	int width = bowlingplayer::NAME_COLUMN_WIDTH + 2 + //2 pipes on each end
+				(bowlingplayer::NUMBER_OF_FRAMES - 1)*bowlingplayer::FRAME_COLUMN_WIDTH + 7 + //frames before the last have width 5 and last is 7
+				bowlingplayer::NUMBER_OF_FRAMES; //pipes dividing columns is frames-1 but there's a pipe on the right end so -1 is cancelled out
+	return width;
 }
 
+const int& bowlingplayer::getNameColumnWidth()
+{
+	return bowlingplayer::NAME_COLUMN_WIDTH;
+}
+#pragma endregion 
+
+#pragma region Mutators
+void bowlingplayer::setNameColumnWidth(const int& width)
+{
+	bowlingplayer::NAME_COLUMN_WIDTH = width;
+}
+
+void setPastScore(const bool frameEnd, const int score, int& pastScore) {
+	if (frameEnd) { //don't let the pastScore be from a different frame
+		pastScore = 0;
+	}
+	else {
+		pastScore = score;
+	}
+}
+#pragma endregion
+
+#pragma region Insertion & Compare Functions
 //return a scorecard for one player. Will chain for multiple players in main to form
 //a larger scorecard
 ostream& operator<<(ostream& out, const bowlingplayer plr)
@@ -77,7 +98,7 @@ ostream& operator<<(ostream& out, const bowlingplayer plr)
 	//TOP DASHED LINE, will stack when chaining outputs,
 	//so will have to do it once, externally
 	//out << setfill('-') << setw(15 + 63) << "" << endl; //force the buffer to print since they're modifiers
-	out << "| " << name << setfill(' ') << setw(bowlingplayer::NAME_COLUMN_WIDTH-name.length()) << "|"; // we want pipe at the end of that width
+	out << "| " << name << setfill(' ') << setw(bowlingplayer::NAME_COLUMN_WIDTH - name.length()) << "|"; // we want pipe at the end of that width
 	int throwsLeft = 2;
 	int frame = 1;
 	int pastScore = 0, throws = 0, i = 0;
@@ -88,7 +109,7 @@ ostream& operator<<(ostream& out, const bowlingplayer plr)
 		bool frameEnd = throws % throwsLeft == 0;
 		int score = scores[i];
 		out << markScoreboard(score, strike, spare, pastScore, frame);
-		if (frame < bowlingplayer::NUMBER_OF_FRAMES) { 										   
+		if (frame < bowlingplayer::NUMBER_OF_FRAMES) {
 			if (strike || frameEnd) {
 				out << " |";
 				nextFrame(frame, throws, pastScore);
@@ -122,6 +143,68 @@ ostream& operator<<(ostream& out, const bowlingplayer plr)
 	out << endl;
 	out << string(bowlingplayer::getScorecardWidth(), '-');
 	return out;
+}
+
+//will be used to sort by last name, then first name if equivalent.
+bool cmpAlpha(const bowlingplayer& left, const bowlingplayer& right)
+{
+	string leftLastName = left.getLastName();
+	string rightLastName = right.getLastName();
+	if (leftLastName < rightLastName) {
+		return true;
+	}
+	else if (leftLastName == rightLastName) {
+		string leftFirstName = left.getFirstName();
+		string rightFirstName = right.getFirstName();
+		if (leftFirstName < rightFirstName) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	return false;
+}
+
+//sorts by player's total score; sorted ascending
+bool cmpScore(const bowlingplayer& left, const bowlingplayer& right)
+{
+	int totalLeft = left.getTotalScore();
+	int totalRight = right.getTotalScore();
+	if (totalLeft < totalRight) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+bool cmpNameLength(const bowlingplayer & left, const bowlingplayer & right)
+{
+	int leftLen = left.getName().length();
+	int rightLen = right.getName().length();
+	if (leftLen < rightLen) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+#pragma endregion
+
+#pragma region Helpers
+const std::string bowlingplayer::toString()
+{
+	string singleLineOutput = getName() + " ";
+	char score[3];
+	for (int i = 0; i < frameScores.size(); i++) {
+		_itoa_s(frameScores[i], score, 10); //have to convert from int to char
+		singleLineOutput += score;
+		if (i != frameScores.size() - 1) {
+			singleLineOutput += " ";
+		}
+	}
+	return singleLineOutput;
 }
 
 void nextFrame(int& frame, int& throws, int& pastScore) {
@@ -212,76 +295,4 @@ void bowlingplayer::populateFrameScores() {
 	}
 	totalScore = total;
 }
-
-void bowlingplayer::setNameColumnWidth(int width)
-{
-	bowlingplayer::NAME_COLUMN_WIDTH = width;
-}
-
-const int bowlingplayer::getScorecardWidth()
-{
-	int width = bowlingplayer::NAME_COLUMN_WIDTH + 2 + //2 pipes on each end
-				(bowlingplayer::NUMBER_OF_FRAMES - 1)*bowlingplayer::FRAME_COLUMN_WIDTH + 7 + //frames before the last have width 5 and last is 7
-				bowlingplayer::NUMBER_OF_FRAMES; //pipes dividing columns is frames-1 but there's a pipe on the right end so -1 is cancelled out
-	return width;
-}
-
-const int bowlingplayer::getNameColumnWidth()
-{
-	return bowlingplayer::NAME_COLUMN_WIDTH;
-}
-
-void setPastScore(const bool frameEnd, const int score, int& pastScore) {
-	if (frameEnd) { //don't let the pastScore be from a different frame
-		pastScore = 0;
-	}
-	else {
-		pastScore = score;
-	}
-}
-
-//will be used to sort by last name, then first name if equivalent.
-bool cmpAlpha(const bowlingplayer& left, const bowlingplayer& right)
-{
-	string leftLastName = left.getLastName();
-	string rightLastName = right.getLastName();
-	if (leftLastName < rightLastName) {
-		return true;
-	}
-	else if (leftLastName == rightLastName) {
-		string leftFirstName = left.getFirstName();
-		string rightFirstName = right.getFirstName();
-		if (leftFirstName < rightFirstName) {
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
-	return false;
-}
-
-//sorts by player's total score; sorted ascending
-bool cmpScore(const bowlingplayer& left, const bowlingplayer& right)
-{
-	int totalLeft = left.getTotalScore();
-	int totalRight = right.getTotalScore();
-	if (totalLeft < totalRight) {
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
-bool cmpNameLength(const bowlingplayer & left, const bowlingplayer & right)
-{
-	int leftLen = left.getName().length();
-	int rightLen = right.getName().length();
-	if (leftLen < rightLen) {
-		return true;
-	}
-	else {
-		return false;
-	}
-}
+#pragma endregion
